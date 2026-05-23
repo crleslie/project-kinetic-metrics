@@ -494,7 +494,9 @@
                 let blob = new Blob([csvContent], { type: 'text/csv' });
                 let a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = 'ammo-scraper-data-' + new Date().toISOString().split('T')[0] + '.csv';
+                /* Creates a timestamp like: 2026-05-23_14-30-05 */
+                const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+                a.download = 'ammo-scraper-data-' + timestamp + '.csv';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -504,7 +506,7 @@
                 let btn = getEl('btn-clear');
                 if (btn.innerText === 'Clear') {
                     btn.innerText = 'Sure?';
-                    btn.style.background = '#b91c1c'; // Darker red to indicate danger
+                    btn.style.background = '#b91c1c'; /* Darker red to indicate danger */
                     setTimeout(() => { 
                         if (btn.innerText === 'Sure?') {
                             btn.innerText = 'Clear';
