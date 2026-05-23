@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ammo Price Scraper Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(to right, #4ade80, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="max-w-2xl w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-8 text-center">
+        
+        <div class="mb-8">
+            <svg class="w-16 h-16 mx-auto text-green-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            <h1 class="text-3xl font-bold text-white mb-2">Ammo Price <span class="gradient-text">Scraper Hub</span></h1>
+            <p class="text-slate-400">Drag the button below to your bookmarks bar to install the scraping tool. Includes advanced specs (UPC, Ballistics) and Shadow DOM protection.</p>
+        </div>
+
+        <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 mb-8 inline-block">
+            <a id="bookmarkBtn" href="#" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 cursor-grab active:cursor-grabbing">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                </svg>
+                AmmoScraper v2.1.3
+            </a>
+        </div>
+
+        <div class="text-left bg-slate-700/30 p-4 rounded-lg text-sm text-slate-300">
+            <h3 class="font-bold text-white mb-2">Instructions:</h3>
+            <ol class="list-decimal pl-5 space-y-2">
+                <li>Make sure your browser's Bookmark Bar is visible (<kbd class="bg-slate-800 px-1 rounded">Ctrl+Shift+B</kbd> or <kbd class="bg-slate-800 px-1 rounded">Cmd+Shift+B</kbd>).</li>
+                <li>Drag the green button above into the bar.</li>
+                <li>Visit a retailer (like MidwayUSA, Palmetto State, etc) and navigate to a specific box of ammo.</li>
+                <li>Click the bookmarklet to open the extractor panel. Review, edit if needed, and hit <strong>Save Entry</strong>.</li>
+                <li><strong>Important:</strong> Because browsers isolate memory per website, you must click <strong>CSV</strong> to download your data <em>before</em> moving to a different retailer's website!</li>
+                <li><strong>Clear Data:</strong> When switching to a new retailer's website, clear your previously saved data by clicking the red <strong>Clear</strong> button in the extractor panel twice.</li>            </ol>
+        </div>
+    </div>
+
+    <script>
+        // The entire scraping engine is contained in this function.
+        // It is converted to a string, heavily URL encoded, and injected into the button.
+        const scraperEngine = function() {
+            
+            var existing = document.getElementById('__ammoPriceScraper');
+            if (existing) { existing.remove(); return; }
+
+            var STORAGE_KEY = 'ammoPriceLog';
+            function getLog() { try { var d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : []; } catch(e) { return []; } }
+            function saveLog(log) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(log)); } catch(e) { console.error('Storage error'); } }
+
+            function extractText() { return document.body.innerText; }
+
+            function extractPrice() {
+                /* 1. JSON-LD Data (Most reliable for e-commerce) */
+                let scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                for(let script of scripts) {
+                    try {
+                        let data = JSON.parse(script.innerText);
+                        let items = Array.isArray(data) ? data : [data];
+                        for(let item of items) {
+                            if((item['@type'] === 'Product' || item['@type'] === 'ProductGroup') && item.offers) {
+                                let offers = Array.isArray(item.offers) ? item.offers : [item.offers];
+                                for(let o of offers) { if(o.price) return o.price.toString(); }
+                            }
+                        }
+                    } catch(e){}
+                }
+                
+                /* 2. Meta Tags */
+                let metaPrice = document.querySelector('meta[property="product:price:amount"]');
+                if (metaPrice) return metaPrice.content;
+                
+                /* 3. DOM Traversal (Avoiding upsells/carousels) */
+                let selectors = ['.price', '.product-price', '[itemprop="price"]', '[data-price]', '.sale-price', '.our-price'];
+                for(let sel of selectors) {
+                    let els = document.querySelectorAll(sel);
+                    for(let el of els) {
+                        /* Crucial: Skip if this price is inside a "Related Products" or carousel container */
+                        let isUpsell = el.closest('[class*="related"], [id*="related"], [class*="carousel"], [class*="recommend"], [class*="upsell"]');
+                        if(isUpsell) continue;
+                        
+                        let txt = el.innerText || el.getAttribute('data-price') || el.getAttribute('content') || '';
+                        let match = txt.match(/\$?([\d,]+\.?\d*)/);
+                        if(match && parseFloat(match[1].replace(/,/g,'')) > 0) return match[1].replace(/,/g,'');
+                    }
+                }
+                
+                return '';
+            }
+
+            function extractQty() {
+                let text = document.body.innerText;
+                let patterns = [/(\d+)\s*(?:round|rd|count|ct|pc|piece)s?\b/i, /box\s+of\s+(\d+)/i, /(\d+)\s*\/\s*box/i, /pack\s+of\s+(\d+)/i, /qty[:\s]+(\d+)/i];
+                for(let p of patterns) {
+                    let m = text.match(p);
+                    if(m && parseInt(m[1]) > 0 && parseInt(m[1]) < 1000) return m[1];
+                }
+                return '';
+            }
+
+            const CALIBERS = [
+                /* .17 Caliber (~.172") */
+                "17 Mach 2", "17 HMR", "17 WSM", "17 Hornet", "17 Rem",
+                
+                /* .20 Caliber (~.204") */
+                "204 Ruger",
+                
+                /* .22 Caliber Rimfire & Centerfire (~.223" - .224") */
+                "22 Short", "22 LR", "22 WMR", "22 Hornet", "222 Rem", "223 Rem", "5.56x45mm NATO", "22-250 Rem", "224 Valkyrie",
+                
+                /* 6mm / .243 Caliber (~.243") */
+                "243 Win", "6mm ARC", "6mm Creedmoor", "6mm Rem",
+                
+                /* .25 Caliber (~.257") */
+                "25-06 Rem", "257 Roberts", "257 Weatherby Mag",
+                
+                /* 6.5mm / .264 Caliber (~.264") */
+                "6.5 Grendel", "6.5x55mm Swedish", "260 Rem", "6.5 Creedmoor", "6.5 PRC", "264 Win Mag",
+                
+                /* 6.8mm / .270 Caliber (~.277") */
+                "6.8 SPC", "270 Win", "270 WSM", "6.8 Western",
+                
+                /* 7mm / .284 Caliber (~.284") */
+                "7mm-08 Rem", "7x57mm Mauser", "280 Rem", "280 Ackley Improved", "7mm Rem Mag", "7mm PRC", "28 Nosler",
+                
+                /* .30 Caliber (~.308") */
+                "30 Carbine", "300 Blackout", "30-30 Win", "308 Win", "7.62x51mm NATO", "30-06 Springfield", "300 WSM", "300 Win Mag", "300 PRC", "300 Weatherby Mag", "300 RUM",
+                
+                /* .311 / .32 Caliber (~.311" - .312") */
+                "32 ACP", "7.62x39mm", "7.62x54mmR", "303 British",
+                
+                /* 8mm (~.323") */
+                "8x57mm Mauser",
+                
+                /* .338 Caliber (~.338") */
+                "338 Federal", "338 Win Mag", "338 Lapua Mag",
+                
+                /* .35 Caliber & 9mm (~.355" - .358") */
+                "380 ACP", "9mm Luger", "38 Special", "357 Magnum", "350 Legend", "35 Remington", "35 Whelen",
+                
+                /* .375 Caliber (~.375") */
+                "375 H&H Mag",
+                
+                /* .40 Caliber & 10mm (~.400") */
+                "40 S&W", "10mm Auto",
+                
+                /* .44 Caliber (~.429") */
+                "44 Special", "44 Magnum",
+                
+                /* .45 Caliber (~.451" - .458") */
+                "45 ACP", "45 Colt", "450 Bushmaster", "45-70 Govt",
+                
+                /* .50 Caliber (~.500" - .510") */
+                "50 Beowulf", "500 S&W Mag", "50 BMG"
+            ];
+
+            function detectCaliber(text) {
+                let t = text.toLowerCase().replace(/-/g, ' ');
+                for (let c of CALIBERS) {
+                    let ct = c.toLowerCase().replace(/-/g, ' ');
+                    if (t.includes(ct) || t.includes(ct.replace(' win', '')) || t.includes(ct.replace(' mag', ''))) return c;
+                }
+                return '';
+            }
+
+            function detectBrand(text) {
+                const brands = ['Hornady', 'Barnes', 'Nosler', 'Federal', 'Winchester', 'Remington', 'Norma', 'Fiocchi', 'Sig Sauer', 'Browning', 'Sellier & Bellot', 'PMC', 'PPU', 'Berger', 'Lapua'];
+                for(let b of brands) {
+                    if (new RegExp('\\b' + b + '\\b', 'i').test(text)) return b;
+                }
+                return '';
+            }
+
+            function detectCategory(text) {
+                const lf = ['tsx', 'ttsx', 'gmx', 'cx', 'e-tip', 'etip', 'copper', 'lead-free', 'lead free', 'triple-shock', 'hammer', 'lehigh', 'solid copper', 'barnes'];
+                let tl = text.toLowerCase();
+                for (let w of lf) {
+                    if (new RegExp('\\b' + w + '\\b', 'i').test(tl)) return 'Lead-Free';
+                }
+                return 'Lead-Core';
+            }
+
+            function detectWeight(text) {
+                let m = text.match(/(\d{2,3})\s*(?:gr|grain)/i);
+                return m ? m[1] : '';
+            }
+
+            function detectStock() {
+                let text = document.body.innerText.toLowerCase();
+                if (text.includes('out of stock') || text.includes('sold out') || text.includes('currently unavailable')) return 'Out of Stock';
+                return 'In Stock';
+            }
+
+            function extractAdvancedSpecs() {
+                let specs = { sku: '', mpn: '', upc: '', velocity: '', energy: '', bc: '', sd: '', style: '' };
+                let text = document.body.innerText;
+                
+                /* 1. JSON-LD Schema */
+                let scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                for (let script of scripts) {
+                    try {
+                        let data = JSON.parse(script.innerText);
+                        let items = Array.isArray(data) ? data : [data];
+                        for (let item of items) {
+                            if (item['@type'] === 'Product' || item['@type'] === 'ProductGroup') {
+                                if (item.sku && !specs.sku) specs.sku = item.sku;
+
+                                // Check if MPN exists, but ignore it if it is a 12-14 digit number (likely a duplicated UPC)
+                                if (item.mpn && !specs.mpn) {
+                                    if (!/^\d{12,14}$/.test(item.mpn)) {
+                                        specs.mpn = item.mpn;
+                                    }
+                                }
+
+                                if ((item.gtin12 || item.gtin13 || item.gtin14 || item.gtin) && !specs.upc) {
+                                    specs.upc = item.gtin12 || item.gtin13 || item.gtin14 || item.gtin;
+                                }
+                            }
+                        } // <-- This closing brace was missing
+                    } catch(e) {}
+                }
+
+                /* 2. Regex fallback for identifiers */
+                if(!specs.upc) { let m = text.match(/(?:UPC|Barcode)[\s:#]*(\d{12,14})/i); if(m) specs.upc = m[1]; }
+                if(!specs.mpn) { let m = text.match(/(?:MPN|Mfg Item Num|Part Number|Manufacturer #)[\s:#]*([A-Za-z0-9-]+)/i); if(m) specs.mpn = m[1]; }
+                if(!specs.sku) { let m = text.match(/(?:SKU|Item Number|Item #|Product #)[\s:#]*([A-Za-z0-9-]+)/i); if(m) specs.sku = m[1]; }
+
+                /* 3. Regex for Ballistics - Tightened to only look immediately after labels */
+                let mVel = text.match(/(?:Muzzle Velocity|Velocity)[^\d]{0,80}?(\d{3,4})\s*(?:fps|ft\/s|feet per second)/i) || text.match(/(\d{3,4})\s*(?:fps|ft\/s)/i);
+                if (mVel) specs.velocity = mVel[1];
+
+                let mEnergy = text.match(/(?:Muzzle Energy|Energy)[^\d]{0,80}?(\d{3,4})\s*(?:ft[ -]?lbs|foot[ -]?pounds)/i) || text.match(/(\d{3,4})\s*(?:ft[ -]?lbs|foot[ -]?pounds)/i);
+                if (mEnergy) specs.energy = mEnergy[1];
+
+                let mBc = text.match(/(?:Ballistic Coefficient|G1 Ballistic Coefficient|G1|G1 BC|BC)[^\d]{0,80}?(0\.\d{1,3})/i);
+                if (mBc) specs.bc = mBc[1];
+
+                let mSd = text.match(/(?:Sectional Density|SD)[^\d]{0,80}?(0\.\d{1,3})/i);
+                if (mSd) specs.sd = mSd[1];
+
+                /* 4. Bullet Style */
+                const styles = [
+                    // Brand-Specific & High-Tech Polymer
+                    'ELD-X', 'ELD-M', 'V-MAX', 'A-MAX', 'TMK', 'SMK', 'SST', 'TTSX', 'CX', 'Ballistic Tip',
+                    
+                    // Polymer / Tipped Variations
+                    'Polymer Tipped', 'Polymer Tip', 'Tipped Solid Copper',
+                    
+                    // Hollow Point Variations
+                    'Jacketed Hollow Point', 'Semi-Jacketed Hollow Point', 'Hollow Point Boat Tail', 
+                    'BTHP', 'HPBT', 'JHP', 'SJHP', 'Hollow Point', 'HP',
+                    
+                    // Soft Point Variations
+                    'Jacketed Soft Point', 'Pointed Soft Point', 'Soft Point', 'JSP', 'PSP', 'SP',
+                    
+                    // Target / Match
+                    'Open Tip Match', 'OTM', 'Total Metal Jacket', 'TMJ', 
+                    
+                    // FMJ Variations
+                    'Full Metal Jacket Boat Tail', 'Full Metal Jacket', 'FMJBT', 'FMJ', 
+                    
+                    // Base Profiles & Monolithic
+                    'Boat Tail', 'Spire Point', 'Round Nose', 'Flat Nose', 'Wadcutter', 'Semi-Wadcutter',
+                    'Monolithic', 'Solid Copper', 'Hard Cast', 'Lead Round Nose', 'LRN', 'RN', 'FN'
+                ];
+                for(let s of styles) {
+                    if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(text)) { specs.style = s; break; }
+                }
+
+                return specs;
+            }
+
+            const extractedText = extractText();
+            const initName = document.querySelector('h1') ? document.querySelector('h1').innerText.trim() : document.title.split('|')[0].trim();
+            
+            /* Prioritize extracting core specs from the Product Title first to avoid upsell interference */
+            const initBrand = detectBrand(initName) || detectBrand(extractedText);
+            const initCaliber = detectCaliber(initName) || detectCaliber(extractedText);
+            const initWeight = detectWeight(initName) || detectWeight(extractedText);
+            const initCategory = detectCategory(initName) || detectCategory(extractedText);
+            
+            const initPrice = extractPrice();
+            const initQty = extractQty();
+            const initStock = detectStock();
+            const advSpecs = extractAdvancedSpecs();
+            
+            let retailerRaw = window.location.hostname.replace('www.', '').split('.')[0];
+            const initRetailer = retailerRaw.charAt(0).toUpperCase() + retailerRaw.slice(1);
+
+            const host = document.createElement('div');
+            host.id = '__ammoPriceScraper';
+            host.style.cssText = 'position:fixed; top:20px; right:20px; z-index:2147483647; font-family:sans-serif;';
+            document.body.appendChild(host);
+
+            const shadow = host.attachShadow({mode: 'open'});
+            const ui = document.createElement('div');
+            ui.className = 'panel';
+
+            const style = document.createElement('style');
+            style.textContent = `
+                :host { all: initial; }
+                .panel { width: 380px; max-height: 85vh; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; color: #f8fafc; font-family: -apple-system, sans-serif; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 12px; }
+                .scroll-area { overflow-y: auto; padding-right: 8px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 5px; }
+                .scroll-area::-webkit-scrollbar { width: 6px; }
+                .scroll-area::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+                .scroll-area::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+                .section-title { font-size: 11px; text-transform: uppercase; color: #4ade80; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-top: 8px; font-weight: 700; letter-spacing: 0.5px; }
+                .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+                .title { font-size: 15px; font-weight: 700; color: #4ade80; display: flex; align-items: center; gap: 6px; }
+                .close-btn { background: transparent; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+                .close-btn:hover { color: #f8fafc; }
+                .row { display: flex; gap: 10px; }
+                .col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+                label { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+                input, select { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 8px; color: #f8fafc; font-size: 13px; width: 100%; box-sizing: border-box; outline: none; }
+                input:focus, select:focus { border-color: #4ade80; }
+                .ppr-display { font-size: 14px; font-weight: 700; color: #67e8f9; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 8px; text-align: center; height: 32px; box-sizing: border-box; }
+                .btn-row { display: flex; gap: 10px; margin-top: 5px; }
+                button { border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+                .btn-primary { flex: 1; background: #16a34a; color: white; }
+                .btn-primary:hover { background: #15803d; }
+                .btn-secondary { background: #334155; color: #e2e8f0; }
+                .btn-secondary:hover { background: #475569; }
+                .btn-danger { background: #ef4444; color: white; padding: 8px; }
+                .btn-danger:hover { background: #dc2626; }
+                .msg { font-size: 12px; text-align: center; height: 16px; margin-top: 4px; }
+            `;
+
+            let caliberOptions = '<option value="">-- Select --</option>';
+            CALIBERS.forEach(c => { caliberOptions += `<option value="${c}" ${c===initCaliber?'selected':''}>${c}</option>`; });
+            caliberOptions += '<option value="Other">Other</option>';
+
+            ui.innerHTML = `
+                <div class="header">
+                    <div class="title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        AmmoScraper
+                    </div>
+                    <button class="close-btn" id="btn-close">&times;</button>
+                </div>
+
+                <div class="scroll-area">
+                    <div class="col">
+                        <label>Product Name</label>
+                        <input type="text" id="inp-name" value="${initName.replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="row">
+                        <div class="col"><label>Retailer</label><input type="text" id="inp-retailer" value="${initRetailer}"></div>
+                        <div class="col"><label>Brand</label><input type="text" id="inp-brand" value="${initBrand}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><label>Caliber</label><select id="sel-caliber">${caliberOptions}</select></div>
+                        <div class="col"><label>Grain Wt.</label><input type="number" id="inp-weight" value="${initWeight}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label>Category</label>
+                            <select id="sel-category">
+                                <option value="Lead-Core" ${initCategory==='Lead-Core'?'selected':''}>Lead-Core</option>
+                                <option value="Lead-Free" ${initCategory==='Lead-Free'?'selected':''}>Lead-Free</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label>Availability</label>
+                            <select id="sel-stock">
+                                <option value="In Stock" ${initStock==='In Stock'?'selected':''}>In Stock</option>
+                                <option value="Out of Stock" ${initStock==='Out of Stock'?'selected':''}>Out of Stock</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><label>Price ($)</label><input type="number" step="0.01" id="inp-price" value="${initPrice}"></div>
+                        <div class="col"><label>Qty (Rds)</label><input type="number" id="inp-qty" value="${initQty}"></div>
+                        <div class="col"><label>$/Round</label><div class="ppr-display" id="disp-ppr">--</div></div>
+                    </div>
+
+                    <div class="section-title">Identifiers</div>
+                    <div class="row">
+                        <div class="col"><label>UPC</label><input type="text" id="inp-upc" value="${advSpecs.upc}"></div>
+                        <div class="col"><label>MPN</label><input type="text" id="inp-mpn" value="${advSpecs.mpn}"></div>
+                        <div class="col"><label>SKU</label><input type="text" id="inp-sku" value="${advSpecs.sku}"></div>
+                    </div>
+
+                    <div class="section-title">Ballistics & Specs</div>
+                    <div class="row">
+                        <div class="col"><label>Style</label><input type="text" id="inp-style" value="${advSpecs.style}"></div>
+                        <div class="col"><label>Vel. (fps)</label><input type="number" id="inp-vel" value="${advSpecs.velocity}"></div>
+                        <div class="col"><label>Enrg.</label><input type="number" id="inp-energy" value="${advSpecs.energy}"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><label>G1 BC</label><input type="number" step="0.001" id="inp-bc" value="${advSpecs.bc}"></div>
+                        <div class="col"><label>S.D.</label><input type="number" step="0.001" id="inp-sd" value="${advSpecs.sd}"></div>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn-primary" id="btn-save">Save Entry</button>
+                    <button class="btn-secondary" id="btn-export">CSV (<span id="disp-count">${getLog().length}</span>)</button>
+                    <button class="btn-danger" id="btn-clear" title="Clear all saved data">Clear</button>
+                </div>
+                <div class="msg" id="msg-text"></div>
+                <div style="font-size: 11px; color: #fbbf24; text-align: center; margin-top: 12px; font-weight: 600; background: #451a03; padding: 6px; border-radius: 6px; border: 1px solid #78350f;">
+                    ⚠️ Data saves per-retailer. Export before switching sites!
+                </div>
+            `;
+
+            shadow.appendChild(style);
+            shadow.appendChild(ui);
+
+            const getEl = id => shadow.getElementById(id);
+
+            const updatePPR = () => {
+                let p = parseFloat(getEl('inp-price').value);
+                let q = parseInt(getEl('inp-qty').value);
+                getEl('disp-ppr').innerText = (p && q && q > 0) ? '$' + (p/q).toFixed(3) : '--';
+            };
+
+            getEl('inp-price').addEventListener('input', updatePPR);
+            getEl('inp-qty').addEventListener('input', updatePPR);
+            updatePPR();
+
+            getEl('btn-close').addEventListener('click', () => host.remove());
+
+            getEl('btn-save').addEventListener('click', () => {
+                let p = parseFloat(getEl('inp-price').value);
+                let q = parseInt(getEl('inp-qty').value);
+                let ppr = (p && q && q > 0) ? (p/q).toFixed(3) : '';
+
+                let entry = {
+                    date: new Date().toISOString().split('T')[0],
+                    retailer: getEl('inp-retailer').value,
+                    brand: getEl('inp-brand').value,
+                    caliber: getEl('sel-caliber').value,
+                    weight: getEl('inp-weight').value,
+                    name: getEl('inp-name').value,
+                    category: getEl('sel-category').value,
+                    stock: getEl('sel-stock').value,
+                    price: getEl('inp-price').value,
+                    qty: getEl('inp-qty').value,
+                    ppr: ppr,
+                    upc: getEl('inp-upc').value,
+                    mpn: getEl('inp-mpn').value,
+                    sku: getEl('inp-sku').value,
+                    style: getEl('inp-style').value,
+                    velocity: getEl('inp-vel').value,
+                    energy: getEl('inp-energy').value,
+                    bc: getEl('inp-bc').value,
+                    sd: getEl('inp-sd').value,
+                    url: window.location.href.split('?')[0]
+                };
+
+                let log = getLog();
+                log.push(entry);
+                saveLog(log);
+
+                getEl('disp-count').innerText = log.length;
+                getEl('msg-text').style.color = '#4ade80';
+                getEl('msg-text').innerText = 'Entry saved successfully!';
+                
+                setTimeout(() => { if (host.parentNode) host.remove(); }, 1500);
+            });
+
+            getEl('btn-export').addEventListener('click', () => {
+                let log = getLog();
+                if (!log.length) {
+                    getEl('msg-text').style.color = '#f87171';
+                    getEl('msg-text').innerText = 'No entries to export.';
+                    return;
+                }
+                
+                const cols = ['date', 'retailer', 'brand', 'caliber', 'weight', 'name', 'category', 'stock', 'price', 'qty', 'ppr', 'upc', 'mpn', 'sku', 'style', 'velocity', 'energy', 'bc', 'sd', 'url'];
+                let csvContent = cols.join(',') + '\n';
+                
+                log.forEach(e => {
+                    let row = cols.map(c => {
+                        let val = (e[c] || '').toString().replace(/"/g, '""');
+                        return `"${val}"`;
+                    });
+                    csvContent += row.join(',') + '\n';
+                });
+                
+                let blob = new Blob([csvContent], { type: 'text/csv' });
+                let a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ammo-scraper-data-' + new Date().toISOString().split('T')[0] + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            getEl('btn-clear').addEventListener('click', () => {
+                let btn = getEl('btn-clear');
+                if (btn.innerText === 'Clear') {
+                    btn.innerText = 'Sure?';
+                    btn.style.background = '#b91c1c'; // Darker red to indicate danger
+                    setTimeout(() => { 
+                        if (btn.innerText === 'Sure?') {
+                            btn.innerText = 'Clear';
+                            btn.style.background = '';
+                        }
+                    }, 3000);
+                } else {
+                    localStorage.removeItem(STORAGE_KEY);
+                    getEl('disp-count').innerText = '0';
+                    getEl('msg-text').style.color = '#ef4444';
+                    getEl('msg-text').innerText = 'Dataset cleared!';
+                    btn.innerText = 'Clear';
+                    btn.style.background = '';
+                }
+            });
+        };
+
+        /* Convert the entire function to a string */
+        const rawCodeString = scraperEngine.toString();
+        
+        /* Fully URL-encode the string to prevent ANY characters from breaking the bookmarklet link */
+        const safeEncodedPayload = encodeURIComponent("(" + rawCodeString + ")();");
+        
+        /* Instead of using eval() which triggers Content Security Policy (CSP) errors on secure ecommerce sites, */
+        /* we rely on the browser's native decoding of the javascript: protocol */
+        const bulletproofHref = "javascript:" + safeEncodedPayload;
+        
+        /* Assign to the button! */
+        document.getElementById('bookmarkBtn').setAttribute('href', bulletproofHref);
+        
+    </script>
+</body>
+</html>
