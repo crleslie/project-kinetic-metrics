@@ -11,6 +11,7 @@
         .earth-gradient {
             background: linear-gradient(to right, #10b981, #d97706); /* Emerald to Amber */
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
     </style>
@@ -33,74 +34,48 @@
                     <li class="flex gap-4">
                         <div class="flex-shrink-0 mt-1"><span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-900/50 text-emerald-500 font-bold border border-emerald-800/50">1</span></div>
                         <div>
-                            <strong class="text-stone-200 block mb-1">The "Green Tax"</strong>
-                            <p class="text-sm text-stone-400">Quantifying the price discrepancy between traditional lead-core rounds and similarly performing lead-free (monolithic) alternatives.</p>
+                            <strong class="text-stone-200 block mb-1">Ballistic Tradeoffs</strong>
+                            <p class="text-sm text-stone-400">Mapping the mathematical relationships between power factor, downrange energy, trajectory, and cost per round.</p>
                         </div>
                     </li>
                     <li class="flex gap-4">
                         <div class="flex-shrink-0 mt-1"><span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-900/50 text-emerald-500 font-bold border border-emerald-800/50">2</span></div>
-                        <div>
-                            <strong class="text-stone-200 block mb-1">Market Availability</strong>
-                            <p class="text-sm text-stone-400">Tracking which big game calibers maintain the most consistent stock across major US retailers.</p>
-                        </div>
-                    </li>
-                    <li class="flex gap-4">
-                        <div class="flex-shrink-0 mt-1"><span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-900/50 text-emerald-500 font-bold border border-emerald-800/50">3</span></div>
                         <div>
                             <strong class="text-stone-200 block mb-1">Economic Efficiency</strong>
                             <p class="text-sm text-stone-400">Identifying the most economical calibers suitable for specific big game species without sacrificing ethical performance.</p>
                         </div>
                     </li>
                     <li class="flex gap-4">
+                        <div class="flex-shrink-0 mt-1"><span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-900/50 text-emerald-500 font-bold border border-emerald-800/50">3</span></div>
+                        <div>
+                            <strong class="text-stone-200 block mb-1">The "Green Tax"</strong>
+                            <p class="text-sm text-stone-400">Quantifying the price discrepancy between traditional lead-core rounds and similarly performing lead-free (monolithic) alternatives.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-4">
                         <div class="flex-shrink-0 mt-1"><span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-900/50 text-emerald-500 font-bold border border-emerald-800/50">4</span></div>
                         <div>
-                            <strong class="text-stone-200 block mb-1">Ballistic Tradeoffs</strong>
-                            <p class="text-sm text-stone-400">Mapping the mathematical relationships between power factor, downrange energy, trajectory, and cost per round.</p>
+                            <strong class="text-stone-200 block mb-1">Market Availability</strong>
+                            <p class="text-sm text-stone-400">Tracking which big game calibers maintain the most consistent stock across major US retailers.</p>
                         </div>
                     </li>
                 </ul>
             </section>
-        </div>
-
-        <!-- Right Column: Tool & Submission -->
-        <div class="space-y-8">
-            <!-- Bookmarklet Card -->
-            <section class="bg-stone-900 border border-stone-800 rounded-2xl p-8 shadow-xl text-center">
-                <h2 class="text-2xl font-bold text-white mb-2">Contribute Data</h2>
-                <p class="text-sm text-stone-400 mb-6">Drag the button below to your bookmarks bar to install our shadow-DOM protected extraction tool.</p>
-                
-                <div class="bg-stone-950 p-4 rounded-xl border border-stone-800 mb-6 inline-block w-full">
-                    <a id="bookmarkBtn" href="#" class="inline-flex justify-center items-center gap-2 w-full bg-gradient-to-r from-stone-700 to-stone-600 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition cursor-grab active:cursor-grabbing border border-stone-500">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                        </svg>
-                        Extractor v2.1.3
-                    </a>
-                </div>
-
-                <div class="text-left bg-stone-950 p-5 rounded-lg text-sm text-stone-400 border border-stone-800">
-                    <ol class="list-decimal pl-4 space-y-3 marker:text-emerald-500 marker:font-bold">
-                        <li>Make your Bookmark Bar visible (<kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300">Ctrl+Shift+B</kbd> or <kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300">Cmd+Shift+B</kbd>).</li>
-                        <li>Drag the button above into the bar.</li>
-                        <li>Navigate to a specific box of ammo on a supported retailer's site.</li>
-                        <li>Click the bookmarklet to open the panel, review the data, and hit <strong>Save Entry</strong>.</li>
-                        <li><span class="text-amber-500 font-semibold">Important:</span> You must click <strong>CSV</strong> to download your data <em>before</em> leaving the retailer's website!</li>
-                        <li><strong>Clear Data:</strong> When switching to a new website, clear your previous data by clicking the red <strong>Clear</strong> button in the panel twice.</li>
-                    </ol>
-                </div>
-            </section>
-
             <!-- Submission Card -->
             <section class="bg-stone-900 border border-stone-800 rounded-2xl p-8 shadow-xl">
                 <h2 class="text-xl font-bold text-white mb-2">Upload Your CSV</h2>
                 <p class="text-sm text-stone-400 mb-6">Once you have finished a scraping session, upload your downloaded CSV file to our secure Google Form to merge it with the master dataset.</p>
                 <!-- Replace the '#' with your actual Google Form URL -->
-                <a href="#" target="_blank" class="block w-full text-center bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg">
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSc0grZWNsaoiHlGShtmXdloD1nM44On7KKpVGgK_IhQQNXo9Q/viewform?usp=header" target="_blank" class="block w-full text-center bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg">
                     Submit Data via Google Forms
                 </a>
             </section>
         </div>
+
+        <!-- Right Column: Tool & Submission -->
+        <div class="space-y-8">
+            <iframe src="bookmarklet.html" class="w-full h-[850px] border-0 rounded-2xl shadow-xl bg-stone-900" title="Bookmarklet Installation Tool"></iframe>
+        </div>
     </div>
-    
 </body>
 </html>
