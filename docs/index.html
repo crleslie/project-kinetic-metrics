@@ -25,10 +25,45 @@
     </header>
 
     <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <!-- Left Column: Goals -->
+        <!-- Left Column: Tool & Instructions -->
         <div class="space-y-8">
+            <iframe src="bookmarklet.html" class="w-full h-[260px] border-0 rounded-2xl shadow-xl bg-stone-900" title="Bookmarklet Installation Tool"></iframe>
+            
             <section class="bg-stone-900 border border-stone-800 rounded-2xl p-8 shadow-xl">
+                <h2 class="text-2xl font-bold text-white mb-6 border-b border-stone-800 pb-2">How to Use the Bookmarklet</h2>
+                
+                <div class="text-left text-stone-400">
+                    <h3 class="font-bold text-white mb-2 text-xs uppercase tracking-wider text-emerald-500">Initial Setup</h3>
+                    <ol class="list-decimal pl-4 space-y-2 marker:text-stone-500 mb-6 text-sm">
+                        <li>Make your Bookmark Bar visible (<kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300 text-xs">Ctrl+Shift+B</kbd> or <kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300 text-xs">Cmd+Shift+B</kbd>).</li>
+                        <li>Drag the button above directly into your bookmarks bar.</li>
+                    </ol>
+
+                    <h3 class="font-bold text-white mb-2 text-xs uppercase tracking-wider text-amber-500">Data Collection Workflow</h3>
+                    <div class="border-l-2 border-amber-500/30 pl-4 space-y-4">
+                        <div>
+                            <span class="block text-white font-semibold text-xs uppercase mb-1">Step 1: Gather on One Retailer</span>
+                            <p class="text-sm text-stone-400">Navigate through different ammunition boxes on a single retailer's site (e.g., MidwayUSA). On each page, click the bookmarklet and hit <strong class="text-stone-200">Save Entry</strong> to log the data.</p>
+                        </div>
+                        
+                        <div>
+                            <span class="block text-amber-500 font-semibold text-xs uppercase mb-1">Step 2: Export Before You Leave</span>
+                            <p class="text-sm text-stone-400">Once you are finished with that retailer, click <strong class="text-amber-400">CSV</strong> in the panel to download your dataset. <span class="italic text-stone-500">Data cannot transfer across different websites; saving data from more than one site will cause issues.</span></p>
+                        </div>
+
+                        <div>
+                            <span class="block text-rose-500 font-semibold text-xs uppercase mb-1">Step 3: Reset for the Next Site</span>
+                            <p class="text-sm text-stone-400">Before navigating to a completely different retailer's website, click the red <strong class="text-rose-400">Clear</strong> button twice to reset the counter to zero. You are now ready to repeat Step 1 on the next site.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        
+        <!-- Right Column: Goals -->
+        <div class="space-y-8">
+            <section class="bg-stone-900 border border-stone-800 rounded-2xl p-10 shadow-xl">
                 <h2 class="text-2xl font-bold text-white mb-6 border-b border-stone-800 pb-2">Research Goals</h2>
                 <ul class="space-y-6">
                     <li class="flex gap-4">
@@ -72,10 +107,7 @@
             </section>
         </div>
 
-        <!-- Right Column: Tool & Submission -->
-        <div class="space-y-8">
-            <iframe src="bookmarklet.html" class="w-full h-[950px] border-0 rounded-2xl shadow-xl bg-stone-900" title="Bookmarklet Installation Tool"></iframe>
-        </div>
+
     </div>
 </body>
 </html>

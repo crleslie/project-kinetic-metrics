@@ -18,47 +18,23 @@
 </head>
 <body class="bg-stone-950 text-stone-300 flex flex-col items-center p-0">
 
-    <div class="max-w-2xl w-full bg-stone-900 rounded-2xl shadow-2xl border border-stone-800 p-8 text-center">
+    <div class="max-w-2xl w-full bg-stone-900 rounded-2xl shadow-2xl border border-stone-800 p-4 text-center">
         
-        <div class="mb-8">
+        <div class="mb-2">
             <h1 class="text-3xl font-bold text-white mb-2">Ammo Price Scraper <span class="earth-gradient">Bookmarklet</span></h1>
             <p class="text-stone-400">Drag the button below to your bookmarks bar to install the scraping tool. Includes advanced specs (UPC, Ballistics) and Shadow DOM protection.</p>
         </div>
 
-        <div class="bg-stone-950 p-6 rounded-xl border border-stone-800 mb-8 inline-block">
+
             <a id="bookmarkBtn" href="#" class="inline-flex justify-center items-center gap-2 bg-gradient-to-r from-stone-700 to-stone-600 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg transform transition hover:scale-105 cursor-grab active:cursor-grabbing border border-stone-500">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
                 AmmoScraper v2.1.4
             </a>
-        </div>
 
-        <div class="text-left bg-stone-950 p-5 rounded-lg text-sm text-stone-400 border border-stone-800">
-            <h3 class="font-bold text-white mb-2 text-xs uppercase tracking-wider text-emerald-500">Initial Setup</h3>
-            <ol class="list-decimal pl-4 space-y-2 marker:text-stone-500 mb-6">
-                <li>Make your Bookmark Bar visible (<kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300 text-xs">Ctrl+Shift+B</kbd> or <kbd class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-stone-300 text-xs">Cmd+Shift+B</kbd>).</li>
-                <li>Drag the button above directly into your bookmarks bar.</li>
-            </ol>
 
-            <h3 class="font-bold text-white mb-2 text-s uppercase tracking-wider text-amber-500">Data Collection Workflow</h3>
-            <div class="border-l-2 border-amber-500/30 pl-4 space-y-4">
-                <div>
-                    <span class="block text-white font-semibold text-s uppercase mb-1">Step 1: Gather on One Retailer</span>
-                    <p class="text-s text-stone-400">Navigate through different ammunition boxes on a single retailer's site (e.g., MidwayUSA). On each page, click the bookmarklet and hit <strong class="text-stone-200">Save Entry</strong> to log the data.</p>
-                </div>
-                
-                <div>
-                    <span class="block text-amber-500 font-semibold text-s uppercase mb-1">Step 2: Export Before You Leave</span>
-                    <p class="text-s text-stone-400">Once you are finished with that retailer, click <strong class="text-amber-400">CSV</strong> in the panel to download your dataset. <span class="italic text-stone-500">Data cannot transfer across different websites; saving data from more than one site will cause issues.</span></p>
-                </div>
 
-                <div>
-                    <span class="block text-rose-500 font-semibold text-s uppercase mb-1">Step 3: Reset for the Next Site</span>
-                    <p class="text-x text-stone-400">Before navigating to a completely different retailer's website, click the red <strong class="text-rose-400">Clear</strong> button twice to reset the counter to zero. You are now ready to repeat Step 1 on the next site.</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
