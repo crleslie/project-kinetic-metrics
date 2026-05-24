@@ -21,7 +21,6 @@
     <div class="max-w-2xl w-full bg-stone-900 rounded-2xl shadow-2xl border border-stone-800 p-8 text-center">
         
         <div class="mb-8">
-
             <h1 class="text-3xl font-bold text-white mb-2">Ammo Price Scraper <span class="earth-gradient">Bookmarklet</span></h1>
             <p class="text-stone-400">Drag the button below to your bookmarks bar to install the scraping tool. Includes advanced specs (UPC, Ballistics) and Shadow DOM protection.</p>
         </div>
@@ -31,7 +30,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
-                AmmoScraper v2.1.3
+                AmmoScraper v2.1.4
             </a>
         </div>
 
@@ -63,8 +62,6 @@
     </div>
 
     <script>
-        // The entire scraping engine is contained in this function.
-        // It is converted to a string, heavily URL encoded, and injected into the button.
         const scraperEngine = function() {
             
             var existing = document.getElementById('__ammoPriceScraper');
@@ -76,8 +73,24 @@
 
             function extractText() { return document.body.innerText; }
 
+            function getTableSpecs() {
+                let map = {};
+                let rows = document.querySelectorAll('table tr, .product-attributes tr, #product-attribute-specs-table tr');
+                rows.forEach(row => {
+                    let th = row.querySelector('th');
+                    let td = row.querySelector('td');
+                    if (th && td) {
+                        let key = th.innerText.toLowerCase().replace(/[:\s]+/g, ' ').trim();
+                        let val = td.innerText.trim();
+                        map[key] = val;
+                    }
+                });
+                return map;
+            }
+
+            const tableSpecs = getTableSpecs();
+
             function extractPrice() {
-                /* 1. JSON-LD Data (Most reliable for e-commerce) */
                 let scripts = document.querySelectorAll('script[type="application/ld+json"]');
                 for(let script of scripts) {
                     try {
@@ -92,16 +105,13 @@
                     } catch(e){}
                 }
                 
-                /* 2. Meta Tags */
                 let metaPrice = document.querySelector('meta[property="product:price:amount"]');
                 if (metaPrice) return metaPrice.content;
                 
-                /* 3. DOM Traversal (Avoiding upsells/carousels) */
-                let selectors = ['.price', '.product-price', '[itemprop="price"]', '[data-price]', '.sale-price', '.our-price'];
+                let selectors = ['.price', '.product-price', '[itemprop="price"]', '[data-price]', '.sale-price', '.our-price', '.price-box .price', '.regular-price .price'];
                 for(let sel of selectors) {
                     let els = document.querySelectorAll(sel);
                     for(let el of els) {
-                        /* Crucial: Skip if this price is inside a "Related Products" or carousel container */
                         let isUpsell = el.closest('[class*="related"], [id*="related"], [class*="carousel"], [class*="recommend"], [class*="upsell"]');
                         if(isUpsell) continue;
                         
@@ -110,11 +120,15 @@
                         if(match && parseFloat(match[1].replace(/,/g,'')) > 0) return match[1].replace(/,/g,'');
                     }
                 }
-                
                 return '';
             }
 
             function extractQty() {
+                if (tableSpecs['quantity']) {
+                    let cleanQty = tableSpecs['quantity'].replace(/,/g, '');
+                    if (parseInt(cleanQty) > 0) return cleanQty;
+                }
+                
                 let text = document.body.innerText;
                 let patterns = [/(\d+)\s*(?:round|rd|count|ct|pc|piece)s?\b/i, /box\s+of\s+(\d+)/i, /(\d+)\s*\/\s*box/i, /pack\s+of\s+(\d+)/i, /qty[:\s]+(\d+)/i];
                 for(let p of patterns) {
@@ -125,62 +139,34 @@
             }
 
             const CALIBERS = [
-                /* .17 Caliber (~.172") */
                 "17 Mach 2", "17 HMR", "17 WSM", "17 Hornet", "17 Rem",
-                
-                /* .20 Caliber (~.204") */
                 "204 Ruger",
-                
-                /* .22 Caliber Rimfire & Centerfire (~.223" - .224") */
                 "22 Short", "22 LR", "22 WMR", "22 Hornet", "222 Rem", "223 Rem", "5.56x45mm NATO", "22-250 Rem", "224 Valkyrie",
-                
-                /* 6mm / .243 Caliber (~.243") */
                 "243 Win", "6mm ARC", "6mm Creedmoor", "6mm Rem",
-                
-                /* .25 Caliber (~.257") */
                 "25-06 Rem", "257 Roberts", "257 Weatherby Mag",
-                
-                /* 6.5mm / .264 Caliber (~.264") */
                 "6.5 Grendel", "6.5x55mm Swedish", "260 Rem", "6.5 Creedmoor", "6.5 PRC", "264 Win Mag",
-                
-                /* 6.8mm / .270 Caliber (~.277") */
                 "6.8 SPC", "270 Win", "270 WSM", "6.8 Western",
-                
-                /* 7mm / .284 Caliber (~.284") */
                 "7mm-08 Rem", "7x57mm Mauser", "280 Rem", "280 Ackley Improved", "7mm Rem Mag", "7mm PRC", "28 Nosler",
-                
-                /* .30 Caliber (~.308") */
                 "30 Carbine", "300 Blackout", "30-30 Win", "308 Win", "7.62x51mm NATO", "30-06 Springfield", "300 WSM", "300 Win Mag", "300 PRC", "300 Weatherby Mag", "300 RUM",
-                
-                /* .311 / .32 Caliber (~.311" - .312") */
                 "32 ACP", "7.62x39mm", "7.62x54mmR", "303 British",
-                
-                /* 8mm (~.323") */
                 "8x57mm Mauser",
-                
-                /* .338 Caliber (~.338") */
                 "338 Federal", "338 Win Mag", "338 Lapua Mag",
-                
-                /* .35 Caliber & 9mm (~.355" - .358") */
                 "380 ACP", "9mm Luger", "38 Special", "357 Magnum", "350 Legend", "35 Remington", "35 Whelen",
-                
-                /* .375 Caliber (~.375") */
                 "375 H&H Mag",
-                
-                /* .40 Caliber & 10mm (~.400") */
                 "40 S&W", "10mm Auto",
-                
-                /* .44 Caliber (~.429") */
                 "44 Special", "44 Magnum",
-                
-                /* .45 Caliber (~.451" - .458") */
                 "45 ACP", "45 Colt", "450 Bushmaster", "45-70 Govt",
-                
-                /* .50 Caliber (~.500" - .510") */
                 "50 Beowulf", "500 S&W Mag", "50 BMG"
             ];
 
             function detectCaliber(text) {
+                if (tableSpecs['ammo caliber']) {
+                    let specCal = tableSpecs['ammo caliber'].toLowerCase().replace(/-/g, ' ');
+                    for (let c of CALIBERS) {
+                        let ct = c.toLowerCase().replace(/-/g, ' ');
+                        if (specCal.includes(ct) || specCal.includes(ct.replace(' win', '')) || specCal.includes(ct.replace(' mag', ''))) return c;
+                    }
+                }
                 let t = text.toLowerCase().replace(/-/g, ' ');
                 for (let c of CALIBERS) {
                     let ct = c.toLowerCase().replace(/-/g, ' ');
@@ -190,7 +176,8 @@
             }
 
             function detectBrand(text) {
-                const brands = ['Hornady', 'Barnes', 'Nosler', 'Federal', 'Winchester', 'Remington', 'Norma', 'Fiocchi', 'Sig Sauer', 'Browning', 'Sellier & Bellot', 'PMC', 'PPU', 'Berger', 'Lapua'];
+                if (tableSpecs['manufacturer']) return tableSpecs['manufacturer'].trim();
+                const brands = ['Hornady', 'Barnes', 'Nosler', 'Federal', 'Winchester', 'Remington', 'Norma', 'Fiocchi', 'Sig Sauer', 'Browning', 'Sellier & Bellot', 'PMC', 'PPU', 'Berger', 'Lapua', 'Sterling'];
                 for(let b of brands) {
                     if (new RegExp('\\b' + b + '\\b', 'i').test(text)) return b;
                 }
@@ -198,6 +185,10 @@
             }
 
             function detectCategory(text) {
+                if (tableSpecs['bullet type']) {
+                    let bt = tableSpecs['bullet type'].toLowerCase();
+                    if (bt.includes('copper') || bt.includes('lead free') || bt.includes('lead-free') || bt.includes('solid')) return 'Lead-Free';
+                }
                 const lf = ['tsx', 'ttsx', 'gmx', 'cx', 'e-tip', 'etip', 'copper', 'lead-free', 'lead free', 'triple-shock', 'hammer', 'lehigh', 'solid copper', 'barnes'];
                 let tl = text.toLowerCase();
                 for (let w of lf) {
@@ -207,12 +198,15 @@
             }
 
             function detectWeight(text) {
+                if (tableSpecs['bullet weight']) {
+                    let m = tableSpecs['bullet weight'].match(/(\d+)/);
+                    if (m) return m[1];
+                }
                 let m = text.match(/(\d{2,3})\s*(?:gr|grain)/i);
                 return m ? m[1] : '';
             }
 
             function detectStock() {
-                /* 1. Check Schema Data (Most reliable for modern e-commerce sites like PSA) */
                 let scripts = document.querySelectorAll('script[type="application/ld+json"]');
                 for (let script of scripts) {
                     try {
@@ -233,7 +227,6 @@
                     } catch(e){}
                 }
 
-                /* 2. Check Standard OpenGraph Meta Tags */
                 let metaStock = document.querySelector('meta[property="product:availability"]') || document.querySelector('meta[name="availability"]');
                 if (metaStock) {
                     let status = metaStock.content.toLowerCase();
@@ -241,17 +234,14 @@
                     if (status.includes('in stock') || status.includes('instock')) return 'In Stock';
                 }
 
-                /* 3. Fallback: Narrow DOM search (Ignoring footers/carousels where ghost text hides) */
                 let mainText = '';
-                // Focus on headers, product info wrappers, or add-to-cart zones
-                let primaryArea = document.querySelector('main') || document.querySelector('#maincontent') || document.querySelector('.product-info-main');
+                let primaryArea = document.querySelector('main') || document.querySelector('#maincontent') || document.querySelector('.product-info-main') || document.querySelector('.product-view');
                 if (primaryArea) {
                     mainText = primaryArea.innerText.toLowerCase();
                 } else {
                     mainText = document.body.innerText.toLowerCase();
                 }
 
-                // Explicitly scan the text for negative indicators first
                 if (mainText.includes('out of stock') || mainText.includes('sold out') || mainText.includes('currently unavailable')) {
                     return 'Out of Stock';
                 }
@@ -263,7 +253,11 @@
                 let specs = { sku: '', mpn: '', upc: '', velocity: '', energy: '', bc: '', sd: '', style: '' };
                 let text = document.body.innerText;
                 
-                /* 1. JSON-LD Schema */
+                if (tableSpecs['upc barcode']) specs.upc = tableSpecs['upc barcode'].trim();
+                if (tableSpecs['muzzle velocity (fps)']) specs.velocity = tableSpecs['muzzle velocity (fps)'].trim();
+                if (tableSpecs['muzzle energy (ft lbs)']) specs.energy = tableSpecs['muzzle energy (ft lbs)'].trim();
+                if (tableSpecs['bullet type']) specs.style = tableSpecs['bullet type'].trim();
+
                 let scripts = document.querySelectorAll('script[type="application/ld+json"]');
                 for (let script of scripts) {
                     try {
@@ -272,34 +266,31 @@
                         for (let item of items) {
                             if (item['@type'] === 'Product' || item['@type'] === 'ProductGroup') {
                                 if (item.sku && !specs.sku) specs.sku = item.sku;
-
-                                // Check if MPN exists, but ignore it if it is a 12-14 digit number (likely a duplicated UPC)
                                 if (item.mpn && !specs.mpn) {
-                                    if (!/^\d{12,14}$/.test(item.mpn)) {
-                                        specs.mpn = item.mpn;
-                                    }
+                                    if (!/^\d{12,14}$/.test(item.mpn)) specs.mpn = item.mpn;
                                 }
-
                                 if ((item.gtin12 || item.gtin13 || item.gtin14 || item.gtin) && !specs.upc) {
                                     specs.upc = item.gtin12 || item.gtin13 || item.gtin14 || item.gtin;
                                 }
                             }
-                        } // <-- This closing brace was missing
+                        }
                     } catch(e) {}
                 }
 
-                /* 2. Regex fallback for identifiers */
                 if(!specs.upc) { let m = text.match(/(?:UPC|Barcode)[\s:#]*(\d{12,14})/i); if(m) specs.upc = m[1]; }
                 if(!specs.mpn) { let m = text.match(/(?:MPN|Mfg Item Num|Part Number|Manufacturer #)[\s:#]*([A-Za-z0-9-]+)/i); if(m) specs.mpn = m[1]; }
                 if(!specs.sku) { let m = text.match(/(?:SKU|Item Number|Item #|Product #)[\s:#]*([A-Za-z0-9-]+)/i); if(m) specs.sku = m[1]; }
 
-                /* 3. Regex for Ballistics - Tightened to only look immediately after labels */
-                let mVel = text.match(/(?:Muzzle Velocity|Velocity)[^\d]{0,80}?(\d{3,4})\s*(?:fps|ft\/s|feet per second)/i) || text.match(/(\d{3,4})\s*(?:fps|ft\/s)/i);
-                if (mVel) specs.velocity = mVel[1];
+                if(!specs.velocity) {
+                    let mVel = text.match(/(?:Muzzle Velocity|Velocity)[^\d]{0,80}?(\d{3,4})\s*(?:fps|ft\/s|feet per second)/i) || text.match(/(\d{3,4})\s*(?:fps|ft\/s)/i);
+                    if (mVel) specs.velocity = mVel[1];
+                }
 
-                let mEnergy = text.match(/(?:Muzzle Energy|Energy)[^\d]{0,80}?(\d{3,4})\s*(?:ft[ /,-]?lbs?|foots?[ -]?pounds?|lbs?[ /,-]?ft)/i) || 
-                              text.match(/(\d{3,4})\s*(?:ft[ /,-]?lbs?|foots?[ -]?pounds?|lbs?[ /,-]?ft)/i);
-                if (mEnergy) specs.energy = mEnergy[1];
+                if(!specs.energy) {
+                    let mEnergy = text.match(/(?:Muzzle Energy|Energy)[^\d]{0,80}?(\d{3,4})\s*(?:ft[ /,-]?lbs?|foots?[ -]?pounds?|lbs?[ /,-]?ft)/i) || 
+                                  text.match(/(\d{3,4})\s*(?:ft[ /,-]?lbs?|foots?[ -]?pounds?|lbs?[ /,-]?ft)/i);
+                    if (mEnergy) specs.energy = mEnergy[1];
+                }
 
                 let mBc = text.match(/(?:Ballistic Coefficient|G1 Ballistic Coefficient|G1|G1 BC|BC)[^\d]{0,80}?(0\.\d{1,3})/i);
                 if (mBc) specs.bc = mBc[1];
@@ -307,33 +298,21 @@
                 let mSd = text.match(/(?:Sectional Density|SD)[^\d]{0,80}?(0\.\d{1,3})/i);
                 if (mSd) specs.sd = mSd[1];
 
-                /* 4. Bullet Style */
-                const styles = [
-                    // Brand-Specific & High-Tech Polymer
-                    'ELD-X', 'ELD-M', 'V-MAX', 'A-MAX', 'TMK', 'SMK', 'SST', 'TTSX', 'CX', 'Ballistic Tip',
-                    
-                    // Polymer / Tipped Variations
-                    'Polymer Tipped', 'Polymer Tip', 'Tipped Solid Copper',
-                    
-                    // Hollow Point Variations
-                    'Jacketed Hollow Point', 'Semi-Jacketed Hollow Point', 'Hollow Point Boat Tail', 
-                    'BTHP', 'HPBT', 'JHP', 'SJHP', 'Hollow Point', 'HP',
-                    
-                    // Soft Point Variations
-                    'Jacketed Soft Point', 'Pointed Soft Point', 'Soft Point', 'JSP', 'PSP', 'SP',
-                    
-                    // Target / Match
-                    'Open Tip Match', 'OTM', 'Total Metal Jacket', 'TMJ', 
-                    
-                    // FMJ Variations
-                    'Full Metal Jacket Boat Tail', 'Full Metal Jacket', 'FMJBT', 'FMJ', 
-                    
-                    // Base Profiles & Monolithic
-                    'Boat Tail', 'Spire Point', 'Round Nose', 'Flat Nose', 'Wadcutter', 'Semi-Wadcutter',
-                    'Monolithic', 'Solid Copper', 'Hard Cast', 'Lead Round Nose', 'LRN', 'RN', 'FN'
-                ];
-                for(let s of styles) {
-                    if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(text)) { specs.style = s; break; }
+                if(!specs.style) {
+                    const styles = [
+                        'ELD-X', 'ELD-M', 'V-MAX', 'A-MAX', 'TMK', 'SMK', 'SST', 'TTSX', 'CX', 'Ballistic Tip',
+                        'Polymer Tipped', 'Polymer Tip', 'Tipped Solid Copper',
+                        'Jacketed Hollow Point', 'Semi-Jacketed Hollow Point', 'Hollow Point Boat Tail', 
+                        'BTHP', 'HPBT', 'JHP', 'SJHP', 'Hollow Point', 'HP',
+                        'Jacketed Soft Point', 'Pointed Soft Point', 'Soft Point', 'JSP', 'PSP', 'SP',
+                        'Open Tip Match', 'OTM', 'Total Metal Jacket', 'TMJ', 
+                        'Full Metal Jacket Boat Tail', 'Full Metal Jacket', 'FMJBT', 'FMJ', 
+                        'Boat Tail', 'Spire Point', 'Round Nose', 'Flat Nose', 'Wadcutter', 'Semi-Wadcutter',
+                        'Monolithic', 'Solid Copper', 'Hard Cast', 'Lead Round Nose', 'LRN', 'RN', 'FN'
+                    ];
+                    for(let s of styles) {
+                        if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(text)) { specs.style = s; break; }
+                    }
                 }
 
                 return specs;
@@ -342,7 +321,6 @@
             const extractedText = extractText();
             const initName = document.querySelector('h1') ? document.querySelector('h1').innerText.trim() : document.title.split('|')[0].trim();
             
-            /* Prioritize extracting core specs from the Product Title first to avoid upsell interference */
             const initBrand = detectBrand(initName) || detectBrand(extractedText);
             const initCaliber = detectCaliber(initName) || detectCaliber(extractedText);
             const initWeight = detectWeight(initName) || detectWeight(extractedText);
@@ -551,7 +529,6 @@
                 let blob = new Blob([csvContent], { type: 'text/csv' });
                 let a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                /* Creates a timestamp like: 2026-05-23_14-30-05 */
                 const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
                 a.download = 'ammo-scraper-data-' + timestamp + '.csv';
                 document.body.appendChild(a);
@@ -563,7 +540,7 @@
                 let btn = getEl('btn-clear');
                 if (btn.innerText === 'Clear') {
                     btn.innerText = 'Sure?';
-                    btn.style.background = '#b91c1c'; /* Darker red to indicate danger */
+                    btn.style.background = '#b91c1c';
                     setTimeout(() => { 
                         if (btn.innerText === 'Sure?') {
                             btn.innerText = 'Clear';
@@ -581,19 +558,10 @@
             });
         };
 
-        /* Convert the entire function to a string */
         const rawCodeString = scraperEngine.toString();
-        
-        /* Fully URL-encode the string to prevent ANY characters from breaking the bookmarklet link */
         const safeEncodedPayload = encodeURIComponent("(" + rawCodeString + ")();");
-        
-        /* Instead of using eval() which triggers Content Security Policy (CSP) errors on secure ecommerce sites, */
-        /* we rely on the browser's native decoding of the javascript: protocol */
         const bulletproofHref = "javascript:" + safeEncodedPayload;
-        
-        /* Assign to the button! */
         document.getElementById('bookmarkBtn').setAttribute('href', bulletproofHref);
-        
     </script>
 </body>
 </html>
