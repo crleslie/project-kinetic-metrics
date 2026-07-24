@@ -106,7 +106,7 @@
                 }
                 
                 let text = document.body.innerText;
-                let patterns = [/(\d+)\s*(?:round|rd|count|ct|pc|piece)s?\b/i, /box\s+of\s+(\d+)/i, /(\d+)\s*\/\s*box/i, /pack\s+of\s+(\d+)/i, /qty[:\s]+(\d+)/i];
+                let patterns = [/(\d+)\s*(?:quantity|round|rd|count|ct|pc|piece)s?\b/i, /box\s+of\s+(\d+)/i, /(\d+)\s*\/\s*box/i, /pack\s+of\s+(\d+)/i, /qty[:\s]+(\d+)/i];
                 for(let p of patterns) {
                     let m = text.match(p);
                     if(m && parseInt(m[1]) > 0 && parseInt(m[1]) < 1000) return m[1];
