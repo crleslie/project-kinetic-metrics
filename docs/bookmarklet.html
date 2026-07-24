@@ -30,7 +30,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
-                AmmoScraper v2.1.5
+                AmmoScraper v2.1.6
             </a>
 
 
@@ -100,13 +100,22 @@
             }
 
             function extractQty() {
+                /* Check the table specs first */
                 if (tableSpecs['quantity']) {
-                    let cleanQty = tableSpecs['quantity'].replace(/,/g, '');
-                    if (parseInt(cleanQty) > 0) return cleanQty;
+                    /* Extract just the number from a string like "20 Round" */
+                    let match = tableSpecs['quantity'].match(/(\d+)/);
+                    if (match && parseInt(match[1]) > 0) return match[1];
                 }
                 
                 let text = document.body.innerText;
-                let patterns = [/(\d+)\s*(?:quantity|round|rd|count|ct|pc|piece)s?\b/i, /box\s+of\s+(\d+)/i, /(\d+)\s*\/\s*box/i, /pack\s+of\s+(\d+)/i, /qty[:\s]+(\d+)/i];
+                /* Updated patterns to catch "Quantity:20 Round" and similar */
+                let patterns = [
+                    /(?:quantity|qty)[:\s]+(\d+)/i, /* Matches "Quantity: 20" or "Qty: 20" */
+                    /(\d+)\s*(?:quantity|round|rd|count|ct|pc|piece)s?\b/i, /* Matches "20 rounds" */
+                    /box\s+of\s+(\d+)/i, /* Matches "box of 20" */
+                    /(\d+)\s*\/\s*box/i, /* Matches "20 / box" */
+                    /pack\s+of\s+(\d+)/i /* Matches "pack of 20" */
+                ];
                 for(let p of patterns) {
                     let m = text.match(p);
                     if(m && parseInt(m[1]) > 0 && parseInt(m[1]) < 1000) return m[1];
