@@ -25,21 +25,16 @@
             <p class="text-sm text-stone-400 pb-2">Drag the button below to your bookmarks bar to install the scraping tool. Includes advanced specs (UPC, Ballistics) and Shadow DOM protection.</p>
         </div>
 
-
-            <a id="bookmarkBtn" href="#" class="inline-flex justify-center items-center gap-2 bg-gradient-to-r from-stone-700 to-stone-600 hover:from-emerald-700 hover:to-emerald-600 text-stone-100 font-bold py-4 px-8 rounded-lg shadow-lg transform transition hover:scale-105 cursor-grab active:cursor-grabbing border border-stone-500">
+            <a id="bookmarkBtn" href="#" draggable="true" class="inline-flex justify-center items-center gap-2 bg-gradient-to-r from-stone-700 to-stone-600 hover:from-emerald-700 hover:to-emerald-600 text-stone-100 font-bold py-4 px-8 rounded-lg shadow-lg transform transition hover:scale-105 cursor-grab active:cursor-grabbing border border-stone-500">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
-                AmmoScraper v2.1.9
+                AmmoScraper v2.1.8
             </a>
-
-
-
     </div>
 
     <script>
         const scraperEngine = function() {
-            
             var existing = document.getElementById('__ammoPriceScraper');
             if (existing) { existing.remove(); return; }
 
@@ -52,7 +47,6 @@
             function getTableSpecs() {
                 let map = {};
                 
-                
                 /* 1. Standard tables (Midway, etc) */
                 let rows = document.querySelectorAll('table tr, .product-attributes tr, #product-attribute-specs-table tr');
                 rows.forEach(row => {
@@ -64,7 +58,7 @@
                     }
                 });
 
-                /* 2. Definition Lists (<dl>) and Div-based labels (Scheels) */
+                /* 2. Definition Lists (<dl>) and Div-based labels (Scheels, Bass Pro) */
                 let labels = document.querySelectorAll('dt, [class*="label"], [class*="Label"], .spec-name');
                 labels.forEach(lbl => {
                     let valEl = lbl.nextElementSibling;
@@ -92,6 +86,27 @@
                             map[key] = val;
                         }
                     }
+                });
+
+                /* 4. Bass Pro Shops specific specs structure */
+                let bpsLabels = document.querySelectorAll('.bps-SpecsTable-row strong, .specs-table-row strong');
+                bpsLabels.forEach(lbl => {
+                     let row = lbl.closest('div');
+                     if (row) {
+                         // The text inside the strong tag is the key
+                         let key = lbl.textContent.toLowerCase().replace(/[:\s]+/g, ' ').trim();
+                         
+                         // The value is usually in a sibling span or text node within the same row,
+                         // We clone the row to manipulate it without affecting the DOM
+                         let clone = row.cloneNode(true);
+                         let strongTag = clone.querySelector('strong');
+                         if(strongTag) clone.removeChild(strongTag);
+                         
+                         let val = clone.textContent.trim();
+                         if (val) {
+                             map[key] = val;
+                         }
+                     }
                 });
 
                 return map;
@@ -131,7 +146,7 @@
                 }
                 return '';
             }
-
+            
             function extractQty() {
                 /* Check the table specs first */
                 let specQty = tableSpecs['quantity'] || tableSpecs['rounds per box'] || tableSpecs['box quantity'];
@@ -156,7 +171,7 @@
                 }
                 return '';
             }
-
+            
             const CALIBERS = [
                 "17 Mach 2", "17 HMR", "17 WSM", "17 Hornet", "17 Rem",
                 "204 Ruger",
@@ -194,7 +209,7 @@
                 }
                 return '';
             }
-
+            
             function detectBrand(text) {
                 if (tableSpecs['manufacturer']) return tableSpecs['manufacturer'].trim();
                 if (tableSpecs['brand']) return tableSpecs['brand'].trim();
@@ -207,7 +222,7 @@
                     'Underwood', 'DoubleTap', 'Sako', 'Herter\'s', 'CCI', 'Aguila', 
                     'Magtech', 'Armscor', 'Igman', 'Choice Ammunition'
                 ];
-
+                
                 let bestBrand = '';
                 let earliestIndex = 99999;
                 
@@ -287,7 +302,7 @@
 
                 return 'In Stock';
             }
-
+            
             function extractAdvancedSpecs() {
                 let specs = { sku: '', mpn: '', upc: '', velocity: '', energy: '', bc: '', sd: '', style: '' };
                 let text = document.body.innerText;
@@ -400,7 +415,7 @@
             
             let retailerRaw = window.location.hostname.replace('www.', '').split('.')[0];
             const initRetailer = retailerRaw.charAt(0).toUpperCase() + retailerRaw.slice(1);
-
+            
             const host = document.createElement('div');
             host.id = '__ammoPriceScraper';
             host.style.cssText = 'position:fixed; top:20px; right:20px; z-index:2147483647; font-family:sans-serif;';
@@ -439,7 +454,7 @@
                 .btn-danger:hover { background: #dc2626; }
                 .msg { font-size: 12px; text-align: center; height: 16px; margin-top: 4px; }
             `;
-
+            
             let caliberOptions = '<option value="">-- Select --</option>';
             CALIBERS.forEach(c => { caliberOptions += `<option value="${c}" ${c===initCaliber?'selected':''}>${c}</option>`; });
             caliberOptions += '<option value="Other">Other</option>';
@@ -517,7 +532,6 @@
                     ⚠️ Data saves per-retailer. Export before switching sites!
                 </div>
             `;
-
             shadow.appendChild(style);
             shadow.appendChild(ui);
 
@@ -573,7 +587,7 @@
                 
                 setTimeout(() => { if (host.parentNode) host.remove(); }, 1500);
             });
-
+            
             getEl('btn-export').addEventListener('click', () => {
                 let log = getLog();
                 if (!log.length) {
@@ -596,17 +610,19 @@
                 let blob = new Blob([csvContent], { type: 'text/csv' });
                 let a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
+                
                 /* Get the local timezone offset in milliseconds */
                 const tzOffset = new Date().getTimezoneOffset() * 60000;
                 /* Subtract the offset from the current time, then convert to ISO format */ 
                 const localTime = new Date(Date.now() - tzOffset);
                 const timestamp = localTime.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
                 a.download = 'ammo-scraper-data-' + timestamp + '.csv';
+                
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
             });
-
+            
             getEl('btn-clear').addEventListener('click', () => {
                 let btn = getEl('btn-clear');
                 if (btn.innerText === 'Clear') {
@@ -628,11 +644,16 @@
                 }
             });
         };
-
+        
         const rawCodeString = scraperEngine.toString();
-        const safeEncodedPayload = encodeURIComponent("(" + rawCodeString + ")();");
-        const bulletproofHref = "javascript:" + safeEncodedPayload;
-        document.getElementById('bookmarkBtn').setAttribute('href', bulletproofHref);
+        
+        // Remove line breaks and extra spaces to create a safe one-line bookmarklet.
+        // We do not use encodeURIComponent here because it balloons the character count
+        // past Chrome/Edge's 32k character limit for drag-and-drop URLs.
+        const cleanCode = rawCodeString.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ');
+        
+        // The browser will naturally handle the string when assigned directly to the .href property.
+        document.getElementById('bookmarkBtn').href = "javascript:(" + cleanCode + ")();";
     </script>
 </body>
 </html>
