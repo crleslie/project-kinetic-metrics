@@ -30,7 +30,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
-                AmmoScraper v2.1.6
+                AmmoScraper v2.1.9
             </a>
 
 
@@ -51,16 +51,49 @@
 
             function getTableSpecs() {
                 let map = {};
+                
+                
+                /* 1. Standard tables (Midway, etc) */
                 let rows = document.querySelectorAll('table tr, .product-attributes tr, #product-attribute-specs-table tr');
                 rows.forEach(row => {
                     let th = row.querySelector('th');
                     let td = row.querySelector('td');
                     if (th && td) {
-                        let key = th.innerText.toLowerCase().replace(/[:\s]+/g, ' ').trim();
-                        let val = td.innerText.trim();
-                        map[key] = val;
+                        let key = th.textContent.toLowerCase().replace(/[:\s]+/g, ' ').trim();
+                        map[key] = td.textContent.trim();
                     }
                 });
+
+                /* 2. Definition Lists (<dl>) and Div-based labels (Scheels) */
+                let labels = document.querySelectorAll('dt, [class*="label"], [class*="Label"], .spec-name');
+                labels.forEach(lbl => {
+                    let valEl = lbl.nextElementSibling;
+                    if (valEl) {
+                        let key = lbl.textContent.toLowerCase().replace(/[:\s]+/g, ' ').trim();
+                        map[key] = valEl.textContent.trim();
+                    } else if (lbl.parentElement) {
+                        let valEl2 = lbl.parentElement.querySelector('dd, [class*="value"], [class*="Value"], .spec-value');
+                        if (valEl2 && valEl2 !== lbl) {
+                            let key = lbl.textContent.toLowerCase().replace(/[:\s]+/g, ' ').trim();
+                            map[key] = valEl2.textContent.trim();
+                        }
+                    }
+                });
+
+                /* 3. List items with colons (e.g., Caliber: 308 Win) */
+                let lis = document.querySelectorAll('li');
+                lis.forEach(li => {
+                    let txt = li.textContent.trim();
+                    if(txt.includes(':')) {
+                        let parts = txt.split(':');
+                        if(parts.length >= 2 && parts[0].length < 35) { 
+                            let key = parts[0].toLowerCase().replace(/\s+/g, ' ').trim();
+                            let val = parts.slice(1).join(':').trim();
+                            map[key] = val;
+                        }
+                    }
+                });
+
                 return map;
             }
 
@@ -101,9 +134,10 @@
 
             function extractQty() {
                 /* Check the table specs first */
-                if (tableSpecs['quantity']) {
+                let specQty = tableSpecs['quantity'] || tableSpecs['rounds per box'] || tableSpecs['box quantity'];
+                if (specQty) {
                     /* Extract just the number from a string like "20 Round" */
-                    let match = tableSpecs['quantity'].match(/(\d+)/);
+                    let match = specQty.match(/(\d+)/);
                     if (match && parseInt(match[1]) > 0) return match[1];
                 }
                 
@@ -145,11 +179,12 @@
             ];
 
             function detectCaliber(text) {
-                if (tableSpecs['ammo caliber']) {
-                    let specCal = tableSpecs['ammo caliber'].toLowerCase().replace(/-/g, ' ');
+                let specCal = tableSpecs['ammo caliber'] || tableSpecs['caliber'] || tableSpecs['cartridge'];
+                if (specCal) {
+                    let sc = specCal.toLowerCase().replace(/-/g, ' ');
                     for (let c of CALIBERS) {
                         let ct = c.toLowerCase().replace(/-/g, ' ');
-                        if (specCal.includes(ct) || specCal.includes(ct.replace(' win', '')) || specCal.includes(ct.replace(' mag', ''))) return c;
+                        if (sc.includes(ct) || sc.includes(ct.replace(' win', '')) || sc.includes(ct.replace(' mag', ''))) return c;
                     }
                 }
                 let t = text.toLowerCase().replace(/-/g, ' ');
@@ -162,16 +197,34 @@
 
             function detectBrand(text) {
                 if (tableSpecs['manufacturer']) return tableSpecs['manufacturer'].trim();
-                const brands = ['Hornady', 'Barnes', 'Nosler', 'Federal', 'Winchester', 'Remington', 'Norma', 'Fiocchi', 'Sig Sauer', 'Browning', 'Sellier & Bellot', 'PMC', 'PPU', 'Berger', 'Lapua', 'Sterling'];
+                if (tableSpecs['brand']) return tableSpecs['brand'].trim();
+                
+                const brands = [
+                    'Hornady', 'Barnes', 'Nosler', 'Federal', 'Winchester', 'Remington', 
+                    'Norma', 'Fiocchi', 'Sig Sauer', 'Browning', 'Sellier & Bellot', 'S&B', 
+                    'PMC', 'PPU', 'Prvi Partizan', 'Berger', 'Lapua', 'Sterling', 'Weatherby',
+                    'Sierra', 'Speer', 'Swift', 'Black Hills', 'HSM', 'Buffalo Bore', 
+                    'Underwood', 'DoubleTap', 'Sako', 'Herter\'s', 'CCI', 'Aguila', 
+                    'Magtech', 'Armscor', 'Igman', 'Choice Ammunition'
+                ];
+
+                let bestBrand = '';
+                let earliestIndex = 99999;
+                
                 for(let b of brands) {
-                    if (new RegExp('\\b' + b + '\\b', 'i').test(text)) return b;
+                    let match = text.match(new RegExp('\\b' + b + '\\b', 'i'));
+                    if (match && match.index < earliestIndex) {
+                        earliestIndex = match.index;
+                        bestBrand = b;
+                    }
                 }
-                return '';
+                return bestBrand;
             }
 
             function detectCategory(text) {
-                if (tableSpecs['bullet type']) {
-                    let bt = tableSpecs['bullet type'].toLowerCase();
+                let specType = tableSpecs['bullet type'] || tableSpecs['bullet style'];
+                if (specType) {
+                    let bt = specType.toLowerCase();
                     if (bt.includes('copper') || bt.includes('lead free') || bt.includes('lead-free') || bt.includes('solid')) return 'Lead-Free';
                 }
                 const lf = ['tsx', 'ttsx', 'gmx', 'cx', 'e-tip', 'etip', 'copper', 'lead-free', 'lead free', 'triple-shock', 'hammer', 'lehigh', 'solid copper', 'barnes'];
@@ -183,8 +236,9 @@
             }
 
             function detectWeight(text) {
-                if (tableSpecs['bullet weight']) {
-                    let m = tableSpecs['bullet weight'].match(/(\d+)/);
+                let specWt = tableSpecs['bullet weight'] || tableSpecs['grain weight'];
+                if (specWt) {
+                    let m = specWt.match(/(\d+)/);
                     if (m) return m[1];
                 }
                 let m = text.match(/(\d{2,3})\s*(?:gr|grain)/i);
@@ -239,9 +293,21 @@
                 let text = document.body.innerText;
                 
                 if (tableSpecs['upc barcode']) specs.upc = tableSpecs['upc barcode'].trim();
+                else if (tableSpecs['upc']) specs.upc = tableSpecs['upc'].trim();
+
                 if (tableSpecs['muzzle velocity (fps)']) specs.velocity = tableSpecs['muzzle velocity (fps)'].trim();
+                else if (tableSpecs['muzzle velocity']) specs.velocity = tableSpecs['muzzle velocity'].match(/(\d+)/)?.[1] || '';
+                else if (tableSpecs['velocity']) specs.velocity = tableSpecs['velocity'].match(/(\d+)/)?.[1] || '';
+
                 if (tableSpecs['muzzle energy (ft lbs)']) specs.energy = tableSpecs['muzzle energy (ft lbs)'].trim();
+                else if (tableSpecs['muzzle energy']) specs.energy = tableSpecs['muzzle energy'].match(/(\d+)/)?.[1] || '';
+                else if (tableSpecs['energy']) specs.energy = tableSpecs['energy'].match(/(\d+)/)?.[1] || '';
+
                 if (tableSpecs['bullet type']) specs.style = tableSpecs['bullet type'].trim();
+                else if (tableSpecs['bullet style']) specs.style = tableSpecs['bullet style'].trim();
+
+                if (tableSpecs['ballistic coefficient']) specs.bc = tableSpecs['ballistic coefficient'].match(/(0\.\d+)/)?.[1] || '';
+                if (tableSpecs['sectional density']) specs.sd = tableSpecs['sectional density'].match(/(0\.\d+)/)?.[1] || '';
 
                 let scripts = document.querySelectorAll('script[type="application/ld+json"]');
                 for (let script of scripts) {
@@ -295,8 +361,24 @@
                         'Boat Tail', 'Spire Point', 'Round Nose', 'Flat Nose', 'Wadcutter', 'Semi-Wadcutter',
                         'Monolithic', 'Solid Copper', 'Hard Cast', 'Lead Round Nose', 'LRN', 'RN', 'FN'
                     ];
+                    
+                    /* 1. Check title first (highest accuracy) */
+                    let titleEl = document.querySelector('h1');
+                    let titleTxt = titleEl ? titleEl.innerText : document.title;
+                    
                     for(let s of styles) {
-                        if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(text)) { specs.style = s; break; }
+                        if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(titleTxt)) { specs.style = s; break; }
+                    }
+                    
+                    /* 2. If not in title, ONLY check the primary product area, NOT the whole body */
+                    if (!specs.style) {
+                        let primaryArea = document.querySelector('main') || document.querySelector('#maincontent') || document.querySelector('.product-info-main') || document.querySelector('.product-view');
+                        let scopedText = primaryArea ? primaryArea.innerText : '';
+                        if (scopedText) {
+                            for(let s of styles) {
+                                if (new RegExp('\\b' + s.replace(' ', '\\s*') + '\\b', 'i').test(scopedText)) { specs.style = s; break; }
+                            }
+                        }
                     }
                 }
 
