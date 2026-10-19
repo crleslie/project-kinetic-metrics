@@ -29,7 +29,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
-                AmmoScraper v2.2.0
+                AmmoScraper v2.2.1
             </a>
     </div>
 
@@ -207,50 +207,50 @@
             function detectCaliber(text) {
                 let textToSearch = "";
 
-                // 1. Check the table specifications first
+                /* 1. Check the table specifications first */
                 let specKeys = Object.keys(tableSpecs);
                 let caliberKey = specKeys.find(k => k.includes('caliber') || k.includes('cartridge'));
                 
                 if (caliberKey) {
                     textToSearch = tableSpecs[caliberKey];
                 } else {
-                    // 2. If no table spec, fallback to the provided text (usually the product title)
+                    /* 2. If no table spec, fallback to the provided text (usually the product title) */
                     textToSearch = text;
                 }
 
-                // Standardize the text: lowercase, remove hyphens, remove decimals
+                /* Standardize the text: lowercase, remove hyphens, remove decimals */
                 let cleanedText = textToSearch.toLowerCase().replace(/[-.]/g, ' ');
 
-                // 3. Define specific aliases for tricky calibers to prevent false overlaps
+                /* 3. Define specific aliases for tricky calibers to prevent false overlaps */
                 const aliases = {
                     "300 wsm": ["300 winchester short magnum", "300 wsm"],
                     "300 win mag": ["300 winchester magnum", "300 win mag"],
                     "270 wsm": ["270 winchester short magnum", "270 wsm"]
                 };
 
-                // Check aliases first to catch specific long-form names (like Winchester Short Magnum)
+                /* Check aliases first to catch specific long-form names (like Winchester Short Magnum) */
                 for (let [standardCaliber, aliasList] of Object.entries(aliases)) {
                     for (let alias of aliasList) {
                         if (cleanedText.includes(alias)) {
-                            // Find the properly capitalized version from our master list
+                            /* Find the properly capitalized version from our master list */
                             return CALIBERS.find(c => c.toLowerCase() === standardCaliber) || standardCaliber;
                         }
                     }
                 }
 
-                // 4. Sort master list by length descending so longer names (6.5 Creedmoor) 
-                // match before shorter names (6.5)
+                /* 4. Sort master list by length descending so longer names (6.5 Creedmoor) */
+                /* match before shorter names (6.5) */
                 let sortedCalibers = [...CALIBERS].sort((a, b) => b.length - a.length);
 
                 for (let knownCaliber of sortedCalibers) {
                     let cleanedKnownCaliber = knownCaliber.toLowerCase().replace(/[-.]/g, ' ');
                     
-                    // Exact strict match required
+                    /* Exact strict match required */
                     if (cleanedText.includes(cleanedKnownCaliber)) {
                         return knownCaliber;
                     }
                     
-                    // Safe fallback: if the master list says "308 Win", check if text has "308 winchester"
+                    /* Safe fallback: if the master list says "308 Win", check if text has "308 winchester" */
                     if (cleanedKnownCaliber.endsWith(' win')) {
                         let winchesterVersion = cleanedKnownCaliber.replace(' win', ' winchester');
                         if (cleanedText.includes(winchesterVersion)) return knownCaliber;
